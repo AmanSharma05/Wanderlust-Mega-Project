@@ -43,21 +43,40 @@ resource "aws_security_group" "allow_user_to_connect" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Jenkins server"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SonarQube server"
+    from_port   = 9000
+    to_port     = 9000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     Name = "mysecurity"
   }
 }
 
 resource "aws_instance" "testinstance" {
-  ami             = var.ami_id
-  instance_type   = var.instance_type
-  key_name        = aws_key_pair.deployer.key_name
-  security_groups = [aws_security_group.allow_user_to_connect.name]
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
+  key_name                    = aws_key_pair.deployer.key_name
+  user_data                   = file("./userdata.sh")
+  user_data_replace_on_change = true
+  iam_instance_profile        = aws_iam_instance_profile.jenkins_profile.name
+  security_groups             = [aws_security_group.allow_user_to_connect.name]
   tags = {
     Name = "Automate-MegaProject"
   }
   root_block_device {
-    volume_size = 30 
+    volume_size = 30
     volume_type = "gp3"
   }
 }
