@@ -14,6 +14,7 @@ AWSCLI_VERSION="2.30.1"
 TRIVY_VERSION="0.72.0"
 DEPENDENCY_CHECK_VERSION="12.1.8"
 SONARQUBE_IMAGE="sonarqube:lts-community"
+PLUGIN_MANAGER_VERSION="2.13.2"
 
 
 echo "Updating package repositories..."
@@ -84,35 +85,29 @@ EOF
 systemctl daemon-reload
 echo "Creating Jenkins admin user..."
 mkdir -p /var/lib/jenkins/init.groovy.d
-cat <<'EOF' >/var/lib/jenkins/init.groovy.d/basic-security.groovy
-#!groovy
+cp -r \
+/tmp/Wanderlust-Mega-Project/terraform/jenkins/init.groovy.d/* \
+/var/lib/jenkins/init.groovy.d/
 
-import jenkins.model.*
-import hudson.security.*
-
-def instance = Jenkins.get()
-
-def hudsonRealm = new HudsonPrivateSecurityRealm(false)
-hudsonRealm.createAccount("admin", "Admin@123")
-
-instance.setSecurityRealm(hudsonRealm)
-
-def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
-strategy.setAllowAnonymousRead(false)
-
-instance.setAuthorizationStrategy(strategy)
-
-instance.save()
-EOF
-
+systemctl enable jenkins
+systemctl restart jenkins
+sleep 10
 cd /tmp
+rm -rf Wanderlust-Mega-Project #Idempotent check to remove the repo if it already exists
 git clone https://github.com/AmanSharma05/Wanderlust-Mega-Project.git
 
-cp /tmp/Wanderlust-Mega-Project/jenkins/plugins.txt /tmp/plugins.txt
+cp /tmp/Wanderlust-Mega-Project/terraform/jenkins/plugins.txt /tmp/plugins.txt
 
-/usr/bin/jenkins-plugin-cli \
---plugin-file /tmp/plugins.txt
+wget -q -O /tmp/jenkins-plugin-manager.jar \
+https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PLUGIN_MANAGER_VERSION}/jenkins-plugin-manager-${PLUGIN_MANAGER_VERSION}.jar
 
+
+java -jar /tmp/jenkins-plugin-manager.jar \
+  --war /usr/share/java/jenkins.war \
+  --plugin-file /tmp/plugins.txt \
+  --plugin-download-directory /var/lib/jenkins/plugins
+
+sleep 30 #Wait for Jenkins to load plugins
 sudo systemctl enable jenkins
 sudo usermod -aG docker jenkins
 sudo systemctl restart docker
@@ -138,38 +133,6 @@ curl -L \
 unzip -q awscliv2.zip
 sudo ./aws/install --update
 rm -rf aws awscliv2.zip
-
-echo "Installing kubectl ${KUBECTL_VERSION}..."
-
-curl -LO \
-"https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
-
-
-echo "Installing eksctl ${EKSCTL_VERSION}..."
-
-curl -L \
-"https://github.com/eksctl-io/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" \
--o eksctl.tar.gz
-
-tar -xzf eksctl.tar.gz
-sudo mv eksctl /usr/local/bin/
-rm eksctl.tar.gz
-
-
-echo "Installing Helm ${HELM_VERSION}..."
-
-curl -LO \
-"https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
-
-tar -xzf helm-${HELM_VERSION}-linux-amd64.tar.gz
-sudo mv linux-amd64/helm /usr/local/bin/
-
-rm -rf \
-linux-amd64 \
-helm-${HELM_VERSION}-linux-amd64.tar.gz
 
 echo "Installing OWASP Dependency Check ${DEPENDENCY_CHECK_VERSION}..."
 
@@ -223,18 +186,6 @@ echo "AWS CLI:"
 aws --version
 
 echo ""
-echo "kubectl:"
-kubectl version --client
-
-echo ""
-echo "eksctl:"
-eksctl version
-
-echo ""
-echo "Helm:"
-helm version
-
-echo ""
 echo "OWASP Dependency Check:"
 dependency-check --version
 
@@ -245,7 +196,3 @@ docker ps
 echo ""
 echo "Jenkins : http://<EC2-PUBLIC-IP>:8080"
 echo "SonarQube : http://<EC2-PUBLIC-IP>:9000"
-
-echo ""
-echo "Initial Jenkins Password:"
-sudo cat /var/lib/jenkins/secrets/initialAdminPassword || true
