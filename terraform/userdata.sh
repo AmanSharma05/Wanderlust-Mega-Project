@@ -83,20 +83,22 @@ Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
 EOF
 
 systemctl daemon-reload
-echo "Creating Jenkins admin user..."
+cd /tmp
+rm -rf Wanderlust-Mega-Project #Idempotent check to remove the repo if it already exists
+git clone https://github.com/AmanSharma05/Wanderlust-Mega-Project.git
+
 mkdir -p /var/lib/jenkins/init.groovy.d
 cp -r \
 /tmp/Wanderlust-Mega-Project/terraform/jenkins/init.groovy.d/* \
 /var/lib/jenkins/init.groovy.d/
 
-systemctl enable jenkins
-systemctl restart jenkins
-sleep 10
-cd /tmp
-rm -rf Wanderlust-Mega-Project #Idempotent check to remove the repo if it already exists
-git clone https://github.com/AmanSharma05/Wanderlust-Mega-Project.git
+cp \
+/tmp/Wanderlust-Mega-Project/terraform/jenkins/plugins.txt \
+/tmp/plugins.txt
 
-cp /tmp/Wanderlust-Mega-Project/terraform/jenkins/plugins.txt /tmp/plugins.txt
+systemctl enable jenkins
+systemctl start jenkins
+sleep 10
 
 wget -q -O /tmp/jenkins-plugin-manager.jar \
 https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PLUGIN_MANAGER_VERSION}/jenkins-plugin-manager-${PLUGIN_MANAGER_VERSION}.jar
@@ -107,7 +109,6 @@ java -jar /tmp/jenkins-plugin-manager.jar \
   --plugin-file /tmp/plugins.txt \
   --plugin-download-directory /var/lib/jenkins/plugins
 
-sleep 30 #Wait for Jenkins to load plugins
 sudo systemctl enable jenkins
 sudo usermod -aG docker jenkins
 sudo systemctl restart docker
