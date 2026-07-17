@@ -165,7 +165,7 @@ cd /opt
 rm -f sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip #Idempotent check to remove the zip file if it already exists
 rm -rf /opt/sonar-scanner
 wget -q \
-https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip
+https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip
 unzip -q sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip
 mv sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64 sonar-scanner
 ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
