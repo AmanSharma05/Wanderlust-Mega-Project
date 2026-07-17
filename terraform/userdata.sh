@@ -1,5 +1,4 @@
 #!/bin/bash
-#Can remove sudo as it is already running as root user
 set -e
 
 exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
@@ -14,13 +13,14 @@ AWSCLI_VERSION="2.30.1"
 TRIVY_VERSION="0.72.0"
 DEPENDENCY_CHECK_VERSION="12.1.8"
 SONARQUBE_IMAGE="sonarqube:lts-community"
+SONAR_SCANNER_VERSION="7.2.0.5079"
 PLUGIN_MANAGER_VERSION="2.13.2"
 
 
 echo "Updating package repositories..."
-sudo apt update -y
+apt update -y
 
-sudo apt install -y \
+apt install -y \
 git \
 curl \
 wget \
@@ -32,50 +32,50 @@ lsb-release
 
 echo "Installing Docker..."
 
-sudo install -m 0755 -d /etc/apt/keyrings
+install -m 0755 -d /etc/apt/keyrings
 
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-| sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+| gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
 
 echo \
 "deb [arch=$(dpkg --print-architecture) \
 signed-by=/etc/apt/keyrings/docker.gpg] \
 https://download.docker.com/linux/ubuntu \
 $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+| tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-sudo apt update -y
+apt update -y
 
-sudo apt install -y \
+apt install -y \
 docker-ce \
 docker-ce-cli \
 containerd.io \
 docker-buildx-plugin \
 docker-compose-plugin
 
-sudo systemctl enable docker
-sudo systemctl start docker
-sudo usermod -aG docker ubuntu
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ubuntu
 
 
 echo "Installing Java..."
-sudo apt install -y ${JAVA_PACKAGE}
+apt install -y ${JAVA_PACKAGE}
 java -version
 
 echo "Installing Jenkins..."
 
 curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key \
-| sudo tee \
+| tee \
 /usr/share/keyrings/jenkins-keyring.asc > /dev/null
 
 echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
 https://pkg.jenkins.io/debian-stable binary/" \
-| sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+| tee /etc/apt/sources.list.d/jenkins.list > /dev/null
 
-sudo apt update -y
-sudo apt install -y jenkins
+apt update -y
+apt install -y jenkins
 mkdir -p /etc/systemd/system/jenkins.service.d
 cat <<EOF >/etc/systemd/system/jenkins.service.d/override.conf
 [Service]
@@ -109,17 +109,17 @@ java -jar /tmp/jenkins-plugin-manager.jar \
   --plugin-file /tmp/plugins.txt \
   --plugin-download-directory /var/lib/jenkins/plugins
 
-sudo systemctl enable jenkins
-sudo usermod -aG docker jenkins
-sudo systemctl restart docker
-sudo systemctl restart jenkins
+systemctl enable jenkins
+usermod -aG docker jenkins
+systemctl restart docker
+systemctl restart jenkins
 
 echo "Installing Trivy ${TRIVY_VERSION}..."
 
 wget \
 https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.deb
 
-sudo dpkg -i trivy_${TRIVY_VERSION}_Linux-64bit.deb
+dpkg -i trivy_${TRIVY_VERSION}_Linux-64bit.deb
 
 rm trivy_${TRIVY_VERSION}_Linux-64bit.deb
 
@@ -132,36 +132,48 @@ curl -L \
 -o awscliv2.zip
 
 unzip -q awscliv2.zip
-sudo ./aws/install --update
+./aws/install --update
 rm -rf aws awscliv2.zip
 
 echo "Installing OWASP Dependency Check ${DEPENDENCY_CHECK_VERSION}..."
 
 cd /opt
-sudo wget \
+wget \
 https://github.com/dependency-check/DependencyCheck/releases/download/v${DEPENDENCY_CHECK_VERSION}/dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip
 
-sudo unzip -q dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip
-sudo mv dependency-check dependency-check-${DEPENDENCY_CHECK_VERSION}
-sudo ln -sf \
+unzip -q dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip
+mv dependency-check dependency-check-${DEPENDENCY_CHECK_VERSION}
+ln -sf \
 /opt/dependency-check-${DEPENDENCY_CHECK_VERSION}/bin/dependency-check.sh \
 /usr/local/bin/dependency-check
-sudo rm dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip
+rm dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip
 
 
 echo "Pulling SonarQube image..."
-sudo docker pull ${SONARQUBE_IMAGE}
+docker pull ${SONARQUBE_IMAGE}
 echo "Starting SonarQube container..."
-echo "vm.max_map_count=524288" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -w vm.max_map_count=524288
-sudo docker run -d \
+echo "vm.max_map_count=524288" | tee -a /etc/sysctl.conf
+sysctl -w vm.max_map_count=524288
+docker run -d \
 --name SonarQube-server \
 --restart unless-stopped \
 -p 9000:9000 \
 ${SONARQUBE_IMAGE}
 
-sudo apt autoremove -y
-sudo apt autoclean
+echo "Installing SonarScanner ${SONAR_SCANNER_VERSION}..."
+cd /opt
+rm -f sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip #Idempotent check to remove the zip file if it already exists
+rm -rf /opt/sonar-scanner
+wget -q \
+https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip
+unzip -q sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip
+mv sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64 sonar-scanner
+ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
+rm sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64.zip
+echo "SonarScanner installed successfully."
+
+apt autoremove -y
+apt autoclean
 
 echo "Docker:"
 docker --version
