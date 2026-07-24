@@ -23,7 +23,7 @@ resource "aws_iam_role" "jenkins_role" {
 
 resource "aws_iam_policy" "ssm_parameter_read" {
 
-  name        = "jenkins-ssm-parameter-read"
+  name = "jenkins-ssm-parameter-read"
 
   description = "Allow Jenkins EC2 to read Parameter Store secrets"
   policy = jsonencode({
@@ -37,7 +37,7 @@ resource "aws_iam_policy" "ssm_parameter_read" {
           "ssm:GetParametersByPath"
         ]
         Resource = [
-          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/jenkins/*"
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/jenkins/*"
         ]
       }
     ]
@@ -70,7 +70,7 @@ resource "aws_iam_role_policy_attachment" "autoscaling" {
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_parameter_read" {
-  role = aws_iam_role.jenkins_role.name
+  role       = aws_iam_role.jenkins_role.name
   policy_arn = aws_iam_policy.ssm_parameter_read.arn
 }
 
