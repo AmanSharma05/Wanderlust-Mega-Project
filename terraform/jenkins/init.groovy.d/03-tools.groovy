@@ -2,12 +2,13 @@ import hudson.plugins.git.GitTool
 import hudson.plugins.git.GitTool.DescriptorImpl
 import hudson.tools.InstallSourceProperty
 import jenkins.model.Jenkins
+import java.util.Collections
 import hudson.plugins.sonar.SonarRunnerInstallation
 import hudson.plugins.sonar.SonarRunnerInstaller
 import org.jenkinsci.plugins.DependencyCheck.tools.DependencyCheckInstallation
 import org.jenkinsci.plugins.DependencyCheck.tools.DependencyCheckInstaller
 
-println("Configuring Jenkins Tools...")
+println("Configuring Jenkins Tools")
 
 def jenkins = Jenkins.get()
 

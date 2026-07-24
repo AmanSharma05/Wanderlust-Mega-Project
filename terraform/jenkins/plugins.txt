@@ -10,6 +10,7 @@ github
 github-branch-source
 pipeline-stage-view
 pipeline-utility-steps
+plain-credentials
 kubernetes
 kubernetes-cli
 ws-cleanup
@@ -19,3 +20,4 @@ email-ext
 ansicolor
 timestamper
 sonar
+ssh-credentials

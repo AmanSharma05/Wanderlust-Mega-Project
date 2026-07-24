@@ -135,6 +135,26 @@ unzip -q awscliv2.zip
 ./aws/install --update
 rm -rf aws awscliv2.zip
 
+echo "Fetching Jenkins credentials from AWS Parameter Store"
+
+get_parameter() {
+    aws ssm get-parameter \
+        --name "$1" \
+        --with-decryption \
+        --query "Parameter.Value" \
+        --output text || { echo "Error: Failed to retrieve parameter - $1 from AWS Parameter Store"; exit 1; }
+}
+echo "Retrieving GitHub username from Parameter Store!"  # For Better Debugging & Logs
+export GITHUB_USERNAME=$(get_parameter "/jenkins/github/username")
+echo "Retrieving GitHub token from Parameter Store!"
+export GITHUB_TOKEN=$(get_parameter "/jenkins/github/token")
+echo "Retrieving Docker Hub username from Parameter Store!"
+export DOCKERHUB_USERNAME=$(get_parameter "/jenkins/dockerhub/username")
+echo "Retrieving Docker Hub password from Parameter Store!"
+export DOCKERHUB_PASSWORD=$(get_parameter "/jenkins/dockerhub/password")
+
+echo "Successfully retrieved Jenkins credentials from Parameter Store."
+
 echo "Installing OWASP Dependency Check ${DEPENDENCY_CHECK_VERSION}..."
 
 cd /opt

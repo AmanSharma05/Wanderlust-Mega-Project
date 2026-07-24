@@ -68,7 +68,7 @@ resource "aws_instance" "testinstance" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
   key_name                    = aws_key_pair.deployer.key_name
-  user_data                   = file("./userdata.sh")
+  user_data = file("./userdata.sh")
   user_data_replace_on_change = true
   iam_instance_profile        = aws_iam_instance_profile.jenkins_profile.name
   security_groups             = [aws_security_group.allow_user_to_connect.name]
